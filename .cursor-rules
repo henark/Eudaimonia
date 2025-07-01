@@ -1,0 +1,24 @@
+# Eudaimonia Development Rules
+
+## Technology Stack
+- Backend: Python with Django framework
+- Frontend: TypeScript with React and Next.js frameworks
+- Database: PostgreSQL
+
+## Code Standards
+- All Python code must adhere to PEP 8 standards
+- All TypeScript/JavaScript code must be formatted with Prettier
+- Use meaningful variable and function names
+- Include proper documentation and comments
+- Follow Django best practices for models, views, and URLs
+
+## Project Structure
+- Backend: Django project with core app
+- Frontend: Next.js project with TypeScript
+- Documentation: Keep docs/ folder updated with project principles
+
+## AI Development Guidelines
+- Reference @Docs(docs/Eudaimonia_Principles.md) for philosophical alignment
+- Prioritize community-centric architecture (LivingWorlds as primary entities)
+- Implement faceted identity concepts
+- Follow the database schema outlined in the principles document 
