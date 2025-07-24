@@ -1,7 +1,3 @@
-## Versão Final da Whitepaper – Eduverso
-
----
-
 # 🌍 Eduverso – Um Ecossistema Educacional Soberano Baseado em Tecnologias Descentralizadas
 
 ## "A educação não é a coisa mais importante no mundo. É **a única coisa** mais importante no mundo." – G.K. Chesterton
