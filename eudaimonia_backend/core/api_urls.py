@@ -9,8 +9,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     UserViewSet, LivingWorldViewSet, PostViewSet, FriendshipViewSet,
-    CommunityMembershipViewSet, ProposalViewSet, VoteViewSet, AICompanionView,
-    SmartProfileViewSet, VerifiableCredentialViewSet, DataExportViewSet
+    CommunityMembershipViewSet, ProposalViewSet, VoteViewSet, AICompanionView
 )
 
 # Create router and register ViewSets
@@ -22,9 +21,6 @@ router.register(r'friendships', FriendshipViewSet)
 router.register(r'memberships', CommunityMembershipViewSet)
 router.register(r'proposals', ProposalViewSet)
 router.register(r'votes', VoteViewSet)
-router.register(r'profiles', SmartProfileViewSet, basename='smartprofile')
-router.register(r'credentials', VerifiableCredentialViewSet, basename='verifiablecredential')
-router.register(r'exports', DataExportViewSet, basename='dataexport')
 
 urlpatterns = [
     # Include router URLs

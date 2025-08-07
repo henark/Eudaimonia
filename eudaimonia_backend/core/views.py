@@ -8,7 +8,6 @@ the faceted identity concepts outlined in the project principles.
 """
 
 from rest_framework import viewsets, status, permissions
-from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,16 +16,13 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from .models import (
     LivingWorld, Post, Friendship, CommunityMembership,
-    Proposal, Vote, SmartProfile, VerifiableCredential
+    Proposal, Vote
 )
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, LivingWorldSerializer,
     PostSerializer, FriendshipSerializer, CommunityMembershipSerializer,
-    ProposalSerializer, VoteSerializer, FacetedProfileSerializer,
-    SmartProfileSerializer, VerifiableCredentialSerializer, DataExportSerializer
+    ProposalSerializer, VoteSerializer, FacetedProfileSerializer
 )
-from decouple import config
-import openai
 
 User = get_user_model()
 
@@ -108,8 +104,6 @@ class LivingWorldViewSet(viewsets.ModelViewSet):
     queryset = LivingWorld.objects.all()
     serializer_class = LivingWorldSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['category']
     
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
@@ -117,21 +111,14 @@ class LivingWorldViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def join(self, request, pk=None):
         """
-        Join a LivingWorld with a specific SmartProfile.
+        Join a LivingWorld.
         
-        This endpoint allows a user's profile to join a LivingWorld,
-        creating a CommunityMembership.
+        This endpoint allows users to join a LivingWorld, creating
+        a CommunityMembership with default role and reputation.
         """
         world = self.get_object()
-        profile_id = request.data.get('profile_id')
-        if not profile_id:
-            return Response(
-                {'error': 'profile_id is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         serializer = CommunityMembershipSerializer(
-            data={'world_id': world.id, 'profile_id': profile_id},
+            data={'world_id': world.id},
             context={'request': request}
         )
         
@@ -254,39 +241,12 @@ class FriendshipViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class SmartProfileViewSet(viewsets.ModelViewSet):
-    """
-    SmartProfile ViewSet for managing user's faceted identities.
-    """
-    serializer_class = SmartProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return SmartProfile.objects.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-
-
-class VerifiableCredentialViewSet(viewsets.ModelViewSet):
-    """
-    VerifiableCredential ViewSet for managing credentials.
-    """
-    serializer_class = VerifiableCredentialSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        # Users can only see credentials associated with their own profiles
-        return VerifiableCredential.objects.filter(profile__user=self.request.user)
-
-    def perform_create(self, serializer):
-        # Add logic to verify and set the issuer
-        serializer.save()
-
-
 class CommunityMembershipViewSet(viewsets.ReadOnlyModelViewSet):
     """
     CommunityMembership ViewSet for membership management.
+
+    This ViewSet provides read-only access to CommunityMemberships,
+    with creation handled through the LivingWorld join endpoint.
     """
     queryset = CommunityMembership.objects.all()
     serializer_class = CommunityMembershipSerializer
@@ -294,9 +254,9 @@ class CommunityMembershipViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         """
-        Filter memberships to show only those of the current user's profiles.
+        Filter memberships to show only those of the current user.
         """
-        return CommunityMembership.objects.filter(profile__user=self.request.user)
+        return CommunityMembership.objects.filter(user=self.request.user)
 
 
 class ProposalViewSet(viewsets.ModelViewSet):
@@ -384,12 +344,19 @@ class SocialRecoveryView(APIView):
 class AICompanionView(APIView):
     """
     AI Companion endpoint for contextual AI assistance.
+
+    This endpoint provides personalized AI assistance based on
+    the user's faceted identity and community context.
     """
     permission_classes = [permissions.IsAuthenticated]
     
     def post(self, request):
         """
         Process AI companion queries with user context.
+
+        This endpoint takes a user query and enriches it with
+        the user's faceted profile data before sending to an
+        external LLM API for personalized responses.
         """
         query = request.data.get('query', '')
         if not query:
@@ -398,52 +365,29 @@ class AICompanionView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        try:
-            openai.api_key = config('OPENAI_API_KEY')
+        # Get user's faceted profile
+        user = request.user
+        profile_serializer = FacetedProfileSerializer(user)
+        user_context = profile_serializer.data
 
-            user = request.user
-            profile_serializer = FacetedProfileSerializer(user)
-            user_context = profile_serializer.data
+        # Construct meta-prompt with user context
+        system_message = (
+            "You are an AI companion helping a user navigate their social world "
+            "on Eudaimonia. You understand the concept of 'Faceted Identity' "
+            "where a person's identity emerges from their various community "
+            "affiliations and roles."
+        )
 
-            system_message = (
-                "You are an AI companion for Eudaimonia, a social platform "
-                "built on the principles of 'Faceted Identity' and community-centric "
-                "interaction. Your goal is to provide helpful, context-aware "
-                "responses based on the user's roles and relationships in their "
-                "various communities ('Living Worlds')."
-            )
+        context_message = f"User context: {user_context}"
+        full_prompt = f"{system_message}\n\n{context_message}\n\nUser question: {query}"
 
-            context_message = f"USER CONTEXT:\n{user_context}"
+        # TODO: Integrate with OpenAI API
+        # For now, return a placeholder response
+        response = {
+            'message': 'AI Companion feature is being implemented',
+            'user_context': user_context,
+            'query': query,
+            'planned_integration': 'OpenAI API for personalized responses'
+        }
 
-            completion = openai.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": system_message},
-                    {"role": "user", "content": f"{context_message}\n\n---\n\nQUESTION: {query}"}
-                ]
-            )
-
-            response_content = completion.choices[0].message.content
-            return Response({'response': response_content})
-
-        except Exception as e:
-            return Response(
-                {'error': f'Failed to connect to AI service: {str(e)}'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
-            )
-
-
-class DataExportViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing user data exports.
-    """
-    serializer_class = DataExportSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return DataExport.objects.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        # Here you would trigger the asynchronous export task
-        # For now, we just create the object with a pending status
-        serializer.save(user=self.request.user, status='pending')
+        return Response(response)

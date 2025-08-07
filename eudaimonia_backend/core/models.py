@@ -176,69 +176,13 @@ class Friendship(models.Model):
         return f"{self.user1.username} - {self.user2.username} ({self.status})"
 
 
-class SmartProfile(models.Model):
-    """
-    SmartProfile model for faceted, decentralized identity.
-
-    This model represents a single "facet" of a user's identity,
-    linked to their main account. Each profile has its own Decentralized
-    Identifier (DID), allowing for contextual and self-sovereign
-    interactions.
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='smart_profiles'
-    )
-    name = models.CharField(max_length=100)
-    did = models.CharField(max_length=255, unique=True, blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'smart_profile'
-        verbose_name = 'Smart Profile'
-        verbose_name_plural = 'Smart Profiles'
-        unique_together = ['user', 'name']
-
-    def __str__(self):
-        return f"{self.user.username}'s {self.name} Profile"
-
-
-class VerifiableCredential(models.Model):
-    """
-    VerifiableCredential model for storing user credentials.
-
-    This model stores Verifiable Credentials (VCs) as JSON objects,
-    linked to a specific SmartProfile. This allows users to associate
-    credentials with different facets of their identity.
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    profile = models.ForeignKey(
-        SmartProfile,
-        on_delete=models.CASCADE,
-        related_name='credentials'
-    )
-    credential_data = models.JSONField()
-    issuer_did = models.CharField(max_length=255)
-    issued_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = 'verifiable_credential'
-        verbose_name = 'Verifiable Credential'
-        verbose_name_plural = 'Verifiable Credentials'
-
-    def __str__(self):
-        return f"VC for {self.profile.name} issued by {self.issuer_did}"
-
-
 class CommunityMembership(models.Model):
     """
-    CommunityMembership model - the bridge between SmartProfiles and LivingWorlds.
+    CommunityMembership model - the bridge between Users and LivingWorlds.
     
-    This model implements the "Faceted Identity" concept by tracking a profile's
+    This model implements the "Faceted Identity" concept by tracking a user's
     role, reputation, and participation within each LivingWorld they join.
+    A user's identity emerges from the intersection of these various memberships.
     """
     ROLE_CHOICES = [
         ('member', 'Member'),
@@ -247,12 +191,10 @@ class CommunityMembership(models.Model):
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    profile = models.ForeignKey(
-        SmartProfile,
+    user = models.ForeignKey(
+        User,
         on_delete=models.CASCADE,
-        related_name='community_memberships',
-        null=True,
-        blank=True
+        related_name='community_memberships'
     )
     world = models.ForeignKey(
         LivingWorld, 
@@ -271,10 +213,10 @@ class CommunityMembership(models.Model):
         db_table = 'community_membership'
         verbose_name = 'Community Membership'
         verbose_name_plural = 'Community Memberships'
-        unique_together = ['profile', 'world']
+        unique_together = ['user', 'world']
     
     def __str__(self):
-        return f"{self.profile.name} in {self.world.name} ({self.role})"
+        return f"{self.user.username} in {self.world.name} ({self.role})"
 
 
 class Proposal(models.Model):
@@ -347,30 +289,3 @@ class Vote(models.Model):
     
     def __str__(self):
         return f"{self.voter.username} voted {self.choice} on {self.proposal.title}"
-
-
-class DataExport(models.Model):
-    """
-    DataExport model to track user data export jobs.
-    """
-    STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('in_progress', 'In Progress'),
-        ('complete', 'Complete'),
-        ('failed', 'Failed'),
-    ]
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='data_exports')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    file = models.FileField(upload_to='exports/', null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'data_export'
-        verbose_name = 'Data Export'
-        verbose_name_plural = 'Data Exports'
-
-    def __str__(self):
-        return f"Export for {self.user.username} at {self.created_at}"

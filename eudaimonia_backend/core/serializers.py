@@ -11,9 +11,8 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import (
     LivingWorld, Post, Friendship, CommunityMembership,
-    Proposal, Vote, SmartProfile, VerifiableCredential, DataExport
+    Proposal, Vote
 )
-import didkit
 
 User = get_user_model()
 
@@ -69,7 +68,7 @@ class LivingWorldSerializer(serializers.ModelSerializer):
     class Meta:
         model = LivingWorld
         fields = [
-            'id', 'name', 'description', 'category', 'theme_data',
+            'id', 'name', 'description', 'theme_data',
             'owner', 'created_at', 'member_count'
         ]
         read_only_fields = ['id', 'owner', 'created_at']
@@ -144,51 +143,38 @@ class FriendshipSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class VerifiableCredentialSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = VerifiableCredential
-        fields = ['id', 'credential_data', 'issuer_did', 'issued_at']
-
-
-class SmartProfileSerializer(serializers.ModelSerializer):
-    credentials = VerifiableCredentialSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = SmartProfile
-        fields = ['id', 'name', 'did', 'credentials', 'created_at']
-        read_only_fields = ['id', 'did', 'created_at']
-
-    def create(self, validated_data):
-        validated_data['user'] = self.context['request'].user
-        # Generate a new DID for the profile
-        key = didkit.generate_ed25519_key()
-        did = didkit.key_to_did("key", key)
-        validated_data['did'] = did
-        return super().create(validated_data)
-
-
 class CommunityMembershipSerializer(serializers.ModelSerializer):
     """
-    CommunityMembership serializer for profile-world relationships.
+    CommunityMembership serializer for user-world relationships.
+
+    This serializer implements the "Faceted Identity" concept by
+    showing a user's role and reputation within a specific LivingWorld.
     """
-    profile = SmartProfileSerializer(read_only=True)
+    user = UserSerializer(read_only=True)
     world = LivingWorldSerializer(read_only=True)
-    profile_id = serializers.UUIDField(write_only=True)
     world_id = serializers.UUIDField(write_only=True)
 
     class Meta:
         model = CommunityMembership
-        fields = ['id', 'profile', 'world', 'profile_id', 'world_id', 'role', 'reputation', 'joined_at']
-        read_only_fields = ['id', 'profile', 'world', 'role', 'reputation', 'joined_at']
+        fields = [
+            'id', 'user', 'world', 'world_id', 'role',
+            'reputation', 'joined_at'
+        ]
+        read_only_fields = ['id', 'user', 'role', 'reputation', 'joined_at']
 
     def create(self, validated_data):
-        validated_data['profile'] = SmartProfile.objects.get(
-            id=validated_data.pop('profile_id'),
-            user=self.context['request'].user # Ensure user owns the profile
-        )
+        validated_data['user'] = self.context['request'].user
         validated_data['world'] = LivingWorld.objects.get(
             id=validated_data.pop('world_id')
         )
+
+        # Check if membership already exists
+        if CommunityMembership.objects.filter(
+            user=validated_data['user'],
+            world=validated_data['world']
+        ).exists():
+            raise serializers.ValidationError("Already a member of this world")
+
         return super().create(validated_data)
 
 
@@ -263,24 +249,26 @@ class FacetedProfileSerializer(serializers.ModelSerializer):
     Faceted Profile serializer - the core of Eudaimonia's identity system.
     
     This serializer materializes the "Faceted Identity" concept by showing
-    a user's identity as the intersection of their Smart Profiles and
-    community affiliations.
+    a user's identity as the intersection of their community affiliations.
+    It returns basic user information along with their memberships across
+    different LivingWorlds, including roles and reputations.
     """
-    smart_profiles = SmartProfileSerializer(many=True, read_only=True)
+    community_memberships = serializers.SerializerMethodField()
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'date_joined', 'smart_profiles']
+        fields = ['id', 'username', 'email', 'date_joined', 'community_memberships']
         read_only_fields = ['id', 'date_joined']
 
-
-class DataExportSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the DataExport model.
-    """
-    user = UserSerializer(read_only=True)
-
-    class Meta:
-        model = DataExport
-        fields = ['id', 'user', 'status', 'file', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'user', 'status', 'file', 'created_at', 'updated_at']
+    def get_community_memberships(self, obj):
+        memberships = obj.community_memberships.select_related('world').all()
+        return [
+            {
+                'world_name': membership.world.name,
+                'world_description': membership.world.description,
+                'role': membership.role,
+                'reputation': membership.reputation,
+                'joined_at': membership.joined_at
+            }
+            for membership in memberships
+        ]
