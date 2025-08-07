@@ -15,6 +15,11 @@ from .models import (
 
 User = get_user_model()
 
+# Unregister the default User admin before reregistering it
+try:
+    admin.site.unregister(User)
+except admin.sites.NotRegistered:
+    pass
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):

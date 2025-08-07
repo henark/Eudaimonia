@@ -31,6 +31,24 @@ class User(AbstractUser):
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # Add related_name to avoid clashes with the default User model
+    groups = models.ManyToManyField(
+        'auth.Group',
+        verbose_name='groups',
+        blank=True,
+        help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.',
+        related_name="core_user_groups",
+        related_query_name="user",
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        verbose_name='user permissions',
+        blank=True,
+        help_text='Specific permissions for this user.',
+        related_name="core_user_permissions",
+        related_query_name="user",
+    )
     
     class Meta:
         db_table = 'user'
@@ -50,13 +68,27 @@ class LivingWorld(models.Model):
     own theme, rules, and culture, embodying the concept of contextual
     social spaces.
     """
+    WORLD_CATEGORIES = [
+        ('education', 'Education'),
+        ('art', 'Art'),
+        ('science', 'Science'),
+        ('social_participation', 'Social Participation'),
+        ('hobbies', 'Hobbies'),
+        ('other', 'Other'),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=200, unique=True)
     description = models.TextField()
+    category = models.CharField(
+        max_length=50,
+        choices=WORLD_CATEGORIES,
+        default='other'
+    )
     theme_data = models.JSONField(default=dict, blank=True)
     owner = models.ForeignKey(
-        User, 
-        on_delete=models.CASCADE, 
+        User,
+        on_delete=models.CASCADE,
         related_name='owned_worlds'
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -160,8 +192,8 @@ class CommunityMembership(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
-        User, 
-        on_delete=models.CASCADE, 
+        User,
+        on_delete=models.CASCADE,
         related_name='community_memberships'
     )
     world = models.ForeignKey(
@@ -256,4 +288,4 @@ class Vote(models.Model):
         unique_together = ['proposal', 'voter']
     
     def __str__(self):
-        return f"{self.voter.username} voted {self.choice} on {self.proposal.title}" 
+        return f"{self.voter.username} voted {self.choice} on {self.proposal.title}"

@@ -10,7 +10,7 @@ concepts outlined in the project principles.
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import (
-    LivingWorld, Post, Friendship, CommunityMembership, 
+    LivingWorld, Post, Friendship, CommunityMembership,
     Proposal, Vote
 )
 
@@ -68,7 +68,7 @@ class LivingWorldSerializer(serializers.ModelSerializer):
     class Meta:
         model = LivingWorld
         fields = [
-            'id', 'name', 'description', 'theme_data', 
+            'id', 'name', 'description', 'theme_data',
             'owner', 'created_at', 'member_count'
         ]
         read_only_fields = ['id', 'owner', 'created_at']
@@ -146,14 +146,14 @@ class FriendshipSerializer(serializers.ModelSerializer):
 class CommunityMembershipSerializer(serializers.ModelSerializer):
     """
     CommunityMembership serializer for user-world relationships.
-    
+
     This serializer implements the "Faceted Identity" concept by
     showing a user's role and reputation within a specific LivingWorld.
     """
     user = UserSerializer(read_only=True)
     world = LivingWorldSerializer(read_only=True)
     world_id = serializers.UUIDField(write_only=True)
-    
+
     class Meta:
         model = CommunityMembership
         fields = [
@@ -161,20 +161,20 @@ class CommunityMembershipSerializer(serializers.ModelSerializer):
             'reputation', 'joined_at'
         ]
         read_only_fields = ['id', 'user', 'role', 'reputation', 'joined_at']
-    
+
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
         validated_data['world'] = LivingWorld.objects.get(
             id=validated_data.pop('world_id')
         )
-        
+
         # Check if membership already exists
         if CommunityMembership.objects.filter(
             user=validated_data['user'],
             world=validated_data['world']
         ).exists():
             raise serializers.ValidationError("Already a member of this world")
-        
+
         return super().create(validated_data)
 
 
@@ -259,7 +259,7 @@ class FacetedProfileSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email', 'date_joined', 'community_memberships']
         read_only_fields = ['id', 'date_joined']
-    
+
     def get_community_memberships(self, obj):
         memberships = obj.community_memberships.select_related('world').all()
         return [
@@ -271,4 +271,4 @@ class FacetedProfileSerializer(serializers.ModelSerializer):
                 'joined_at': membership.joined_at
             }
             for membership in memberships
-        ] 
+        ]

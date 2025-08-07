@@ -51,7 +51,7 @@ export default function Home() {
               <span className="block text-primary-600">Eudaimonia</span>
             </h1>
             <p className="mt-3 max-w-md mx-auto text-base text-gray-500 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
-              A platform for human flourishing through community-centric interaction. 
+              A platform for human flourishing through community-centric interaction.
               Join Living Worlds where your identity emerges from meaningful connections.
             </p>
             <div className="mt-5 max-w-md mx-auto sm:flex sm:justify-center md:mt-8">
@@ -84,7 +84,7 @@ export default function Home() {
                 A better way to connect
               </p>
               <p className="mt-4 max-w-2xl text-xl text-gray-500 lg:mx-auto">
-                Eudaimonia reimagines social networking by prioritizing communities over feeds, 
+                Eudaimonia reimagines social networking by prioritizing communities over feeds,
                 identity over profiles, and flourishing over engagement.
               </p>
             </div>
@@ -99,7 +99,7 @@ export default function Home() {
                   </div>
                   <p className="ml-16 text-lg leading-6 font-medium text-gray-900">Living Worlds</p>
                   <p className="mt-2 ml-16 text-base text-gray-500">
-                    Join distinct community spaces where content and interactions are contextual 
+                    Join distinct community spaces where content and interactions are contextual
                     and meaningful, preventing context collapse.
                   </p>
                 </div>
@@ -112,7 +112,7 @@ export default function Home() {
                   </div>
                   <p className="ml-16 text-lg leading-6 font-medium text-gray-900">Faceted Identity</p>
                   <p className="mt-2 ml-16 text-base text-gray-500">
-                    Your identity emerges from your roles and relationships across different 
+                    Your identity emerges from your roles and relationships across different
                     communities, not from a single profile.
                   </p>
                 </div>
@@ -125,7 +125,7 @@ export default function Home() {
                   </div>
                   <p className="ml-16 text-lg leading-6 font-medium text-gray-900">Community Governance</p>
                   <p className="mt-2 ml-16 text-base text-gray-500">
-                    Participate in collective decision-making within your communities 
+                    Participate in collective decision-making within your communities
                     through proposals and voting systems.
                   </p>
                 </div>
@@ -138,7 +138,7 @@ export default function Home() {
                   </div>
                   <p className="ml-16 text-lg leading-6 font-medium text-gray-900">AI Companion</p>
                   <p className="mt-2 ml-16 text-base text-gray-500">
-                    Get personalized assistance that understands your community context 
+                    Get personalized assistance that understands your community context
                     and helps you navigate your social world.
                   </p>
                 </div>
@@ -160,4 +160,4 @@ export default function Home() {
       </footer>
     </div>
   )
-} 
+}

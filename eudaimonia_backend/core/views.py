@@ -244,14 +244,14 @@ class FriendshipViewSet(viewsets.ModelViewSet):
 class CommunityMembershipViewSet(viewsets.ReadOnlyModelViewSet):
     """
     CommunityMembership ViewSet for membership management.
-    
+
     This ViewSet provides read-only access to CommunityMemberships,
     with creation handled through the LivingWorld join endpoint.
     """
     queryset = CommunityMembership.objects.all()
     serializer_class = CommunityMembershipSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_queryset(self):
         """
         Filter memberships to show only those of the current user.
@@ -344,7 +344,7 @@ class SocialRecoveryView(APIView):
 class AICompanionView(APIView):
     """
     AI Companion endpoint for contextual AI assistance.
-    
+
     This endpoint provides personalized AI assistance based on
     the user's faceted identity and community context.
     """
@@ -353,7 +353,7 @@ class AICompanionView(APIView):
     def post(self, request):
         """
         Process AI companion queries with user context.
-        
+
         This endpoint takes a user query and enriches it with
         the user's faceted profile data before sending to an
         external LLM API for personalized responses.
@@ -369,7 +369,7 @@ class AICompanionView(APIView):
         user = request.user
         profile_serializer = FacetedProfileSerializer(user)
         user_context = profile_serializer.data
-        
+
         # Construct meta-prompt with user context
         system_message = (
             "You are an AI companion helping a user navigate their social world "
@@ -377,10 +377,10 @@ class AICompanionView(APIView):
             "where a person's identity emerges from their various community "
             "affiliations and roles."
         )
-        
+
         context_message = f"User context: {user_context}"
         full_prompt = f"{system_message}\n\n{context_message}\n\nUser question: {query}"
-        
+
         # TODO: Integrate with OpenAI API
         # For now, return a placeholder response
         response = {
@@ -389,5 +389,5 @@ class AICompanionView(APIView):
             'query': query,
             'planned_integration': 'OpenAI API for personalized responses'
         }
-        
-        return Response(response) 
+
+        return Response(response)
