@@ -10,11 +10,16 @@ from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth import get_user_model
 from .models import (
     LivingWorld, Post, Friendship, CommunityMembership,
-    Proposal, Vote
+    Proposal, Vote, SmartProfile, VerifiableCredential
 )
 
 User = get_user_model()
 
+# Unregister the default User admin before reregistering it
+try:
+    admin.site.unregister(User)
+except admin.sites.NotRegistered:
+    pass
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
@@ -89,16 +94,40 @@ class FriendshipAdmin(admin.ModelAdmin):
     ordering = ['-created_at']
 
 
+@admin.register(SmartProfile)
+class SmartProfileAdmin(admin.ModelAdmin):
+    """
+    SmartProfile admin interface.
+    """
+    list_display = ['name', 'user', 'did', 'created_at']
+    list_filter = ['created_at', 'user']
+    search_fields = ['name', 'did', 'user__username']
+    readonly_fields = ['id', 'did', 'created_at', 'updated_at']
+    ordering = ['-created_at']
+
+
+@admin.register(VerifiableCredential)
+class VerifiableCredentialAdmin(admin.ModelAdmin):
+    """
+    VerifiableCredential admin interface.
+    """
+    list_display = ['profile', 'issuer_did', 'issued_at']
+    list_filter = ['issued_at', 'issuer_did']
+    search_fields = ['profile__name', 'issuer_did']
+    readonly_fields = ['id', 'issued_at']
+    ordering = ['-issued_at']
+
+
 @admin.register(CommunityMembership)
 class CommunityMembershipAdmin(admin.ModelAdmin):
     """
     CommunityMembership admin interface.
     
-    Manages user-world relationships and roles.
+    Manages profile-world relationships and roles.
     """
-    list_display = ['user', 'world', 'role', 'reputation', 'joined_at']
+    list_display = ['profile', 'world', 'role', 'reputation', 'joined_at']
     list_filter = ['role', 'joined_at', 'world']
-    search_fields = ['user__username', 'world__name']
+    search_fields = ['profile__name', 'world__name']
     readonly_fields = ['id', 'joined_at', 'updated_at']
     ordering = ['-joined_at']
 

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "appName": "Eudaimonia",
+  "login": "Entrar",
+  "join": "Junte-se",
+  "welcomeTo": "Bem-vindo à",
+  "heroDescription": "Uma plataforma para o florescimento humano através da interação centrada na comunidade. Junte-se a Mundos Vivos onde sua identidade emerge de conexões significativas.",
+  "getStarted": "Comece agora",
+  "learnMore": "Saiba mais",
+  "features": "Funcionalidades",
+  "featuresTitle": "Uma maneira melhor de se conectar",
+  "featuresDescription": "Eudaimonia reimagina as redes sociais priorizando comunidades em vez de feeds, identidade em vez de perfis e florescimento em vez de engajamento.",
+  "livingWorldsTitle": "Mundos Vivos",
+  "livingWorldsDescription": "Participe de espaços comunitários distintos onde o conteúdo e as interações são contextuais e significativos, evitando o colapso de contexto.",
+  "facetedIdentityTitle": "Identidade Facetada",
+  "facetedIdentityDescription": "Sua identidade emerge de seus papéis e relacionamentos em diferentes comunidades, não de um único perfil.",
+  "communityGovernanceTitle": "Governança Comunitária",
+  "communityGovernanceDescription": "Participe da tomada de decisões coletivas em suas comunidades por meio de propostas e sistemas de votação.",
+  "aiCompanionTitle": "Companheiro de IA",
+  "aiCompanionDescription": "Obtenha assistência personalizada que entende o contexto da sua comunidade e ajuda você a navegar no seu mundo social.",
+  "footerText": "© 2024 Eudaimonia. Construído para o florescimento humano."
+}

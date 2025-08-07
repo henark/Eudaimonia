@@ -1,3 +1,5 @@
+const { withParaglide } = require("@inlang/paraglide-js-adapter-next/plugin");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
@@ -13,4 +15,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig; 
+module.exports = withParaglide(nextConfig);
