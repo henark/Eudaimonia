@@ -1,12 +1,3 @@
-"""
-Eudaimonia Core Models
-
-This module implements the database schema based on the Eudaimonia Principles.
-The architecture prioritizes LivingWorlds (communities) as the primary entities,
-with users and content contextually situated within them, reflecting the
-philosophy of "Faceted Identity" and community-centric design.
-"""
-
 import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractUser
@@ -14,25 +5,13 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class User(AbstractUser):
-    """
-    Extended User model for Eudaimonia.
-    
-    This model represents individual users in the system. Following the
-    "Faceted Identity" principle, a user's identity is not monolithic but
-    emerges from their various roles and relationships across different
-    "Living Worlds."
-    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
-    
-    # Override username to ensure uniqueness
     username = models.CharField(max_length=150, unique=True)
-    
-    # Timestamps
+    preferred_ai_provider = models.CharField(max_length=50, default='openai')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Add related_name to avoid clashes with the default User model
     groups = models.ManyToManyField(
         'auth.Group',
         verbose_name='groups',
@@ -60,14 +39,6 @@ class User(AbstractUser):
 
 
 class LivingWorld(models.Model):
-    """
-    LivingWorld model - the central entity in Eudaimonia's architecture.
-    
-    A LivingWorld represents a distinct community space where users can
-    interact, share content, and build relationships. Each world has its
-    own theme, rules, and culture, embodying the concept of contextual
-    social spaces.
-    """
     WORLD_CATEGORIES = [
         ('education', 'Education'),
         ('art', 'Art'),
@@ -81,8 +52,8 @@ class LivingWorld(models.Model):
     name = models.CharField(max_length=200, unique=True)
     description = models.TextField()
     category = models.CharField(
-        max_length=50,
-        choices=WORLD_CATEGORIES,
+        max_length=50, 
+        choices=WORLD_CATEGORIES, 
         default='other'
     )
     theme_data = models.JSONField(default=dict, blank=True)
@@ -104,14 +75,6 @@ class LivingWorld(models.Model):
 
 
 class Post(models.Model):
-    """
-    Post model for content within LivingWorlds.
-    
-    Posts are always contextual to a specific LivingWorld, reinforcing
-    the community-centric architecture. This prevents context collapse
-    by ensuring content is always situated within its appropriate social
-    context.
-    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     content = models.TextField()
     author = models.ForeignKey(
@@ -138,13 +101,6 @@ class Post(models.Model):
 
 
 class Friendship(models.Model):
-    """
-    Friendship model for user relationships.
-    
-    This implements the social graph aspect of Eudaimonia, allowing users
-    to form direct connections while maintaining their contextual identities
-    within different LivingWorlds.
-    """
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('accepted', 'Accepted'),
@@ -176,14 +132,49 @@ class Friendship(models.Model):
         return f"{self.user1.username} - {self.user2.username} ({self.status})"
 
 
+class SmartProfile(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='smart_profiles'
+    )
+    name = models.CharField(max_length=100)
+    did = models.CharField(max_length=255, unique=True, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'smart_profile'
+        verbose_name = 'Smart Profile'
+        verbose_name_plural = 'Smart Profiles'
+        unique_together = ['user', 'name']
+
+    def __str__(self):
+        return f"{self.user.username}'s {self.name} Profile"
+
+
+class VerifiableCredential(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    profile = models.ForeignKey(
+        SmartProfile,
+        on_delete=models.CASCADE,
+        related_name='credentials'
+    )
+    credential_data = models.JSONField()
+    issuer_did = models.CharField(max_length=255)
+    issued_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'verifiable_credential'
+        verbose_name = 'Verifiable Credential'
+        verbose_name_plural = 'Verifiable Credentials'
+
+    def __str__(self):
+        return f"VC for {self.profile.name} issued by {self.issuer_did}"
+
+
 class CommunityMembership(models.Model):
-    """
-    CommunityMembership model - the bridge between Users and LivingWorlds.
-    
-    This model implements the "Faceted Identity" concept by tracking a user's
-    role, reputation, and participation within each LivingWorld they join.
-    A user's identity emerges from the intersection of these various memberships.
-    """
     ROLE_CHOICES = [
         ('member', 'Member'),
         ('moderator', 'Moderator'),
@@ -191,10 +182,12 @@ class CommunityMembership(models.Model):
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(
-        User,
+    profile = models.ForeignKey(
+        SmartProfile,
         on_delete=models.CASCADE,
-        related_name='community_memberships'
+        related_name='community_memberships',
+        null=True,
+        blank=True
     )
     world = models.ForeignKey(
         LivingWorld, 
@@ -213,20 +206,13 @@ class CommunityMembership(models.Model):
         db_table = 'community_membership'
         verbose_name = 'Community Membership'
         verbose_name_plural = 'Community Memberships'
-        unique_together = ['user', 'world']
+        unique_together = ['profile', 'world']
     
     def __str__(self):
-        return f"{self.user.username} in {self.world.name} ({self.role})"
+        return f"{self.profile.name} in {self.world.name} ({self.role})"
 
 
 class Proposal(models.Model):
-    """
-    Proposal model for community governance.
-    
-    This implements the basic governance system for LivingWorlds, allowing
-    communities to make collective decisions. This is the foundation for
-    the future DAO functionality outlined in the roadmap.
-    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=200)
     description = models.TextField()
@@ -254,13 +240,6 @@ class Proposal(models.Model):
 
 
 class Vote(models.Model):
-    """
-    Vote model for proposal voting.
-    
-    This tracks individual votes on proposals, implementing the basic
-    governance mechanism. In the future, this will be enhanced with
-    more sophisticated voting mechanisms and on-chain execution.
-    """
     CHOICE_CHOICES = [
         ('agree', 'Agree'),
         ('disagree', 'Disagree'),
@@ -289,3 +268,27 @@ class Vote(models.Model):
     
     def __str__(self):
         return f"{self.voter.username} voted {self.choice} on {self.proposal.title}"
+
+
+class DataExport(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('complete', 'Complete'),
+        ('failed', 'Failed'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='data_exports')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    ipfs_cid = models.CharField(max_length=255, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'data_export'
+        verbose_name = 'Data Export'
+        verbose_name_plural = 'Data Exports'
+
+    def __str__(self):
+        return f"Export for {self.user.username} at {self.created_at}"
