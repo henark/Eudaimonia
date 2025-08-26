@@ -59,42 +59,81 @@ class User(AbstractUser):
         return self.username
 
 
-class ResearchHub(models.Model):
+class LivingWorld(models.Model):
     """
-    ResearchHub model - a community for decentralized science.
+    LivingWorld model - a community for collaborative world-building.
+
+    This model represents a "Living World," a community-driven space with its
+    own unique theme, rules, and governance. It is the central pillar of the
+    Eudaimonia platform, where users can create and join communities that
+    align with their interests.
     """
-    HUB_CATEGORIES = [
-        ('biology', 'Biology'),
-        ('physics', 'Physics'),
-        ('computer_science', 'Computer Science'),
-        ('social_sciences', 'Social Sciences'),
-        ('humanities', 'Humanities'),
+    THEME_CHOICES = [
+        ('decentralized_science', 'Decentralized Science'),
+        ('art_and_culture', 'Art and Culture'),
+        ('technology_and_startups', 'Technology and Startups'),
+        ('social_and_political_issues', 'Social and Political Issues'),
         ('other', 'Other'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=200, unique=True)
     description = models.TextField()
-    category = models.CharField(
+    theme = models.CharField(
         max_length=50,
-        choices=HUB_CATEGORIES,
+        choices=THEME_CHOICES,
         default='other'
     )
+    # The `theme_data` field allows for flexible, theme-specific data
+    theme_data = models.JSONField(default=dict, blank=True)
     owner = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='owned_hubs'
+        related_name='owned_worlds'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        db_table = 'research_hub'
-        verbose_name = 'Research Hub'
-        verbose_name_plural = 'Research Hubs'
+        db_table = 'living_world'
+        verbose_name = 'Living World'
+        verbose_name_plural = 'Living Worlds'
     
     def __str__(self):
         return self.name
+
+
+class Post(models.Model):
+    """
+    Post model - a piece of content within a LivingWorld.
+
+    This model represents a single post made by a user within a LivingWorld.
+    Posts are always contextual to a world, preventing the context collapse
+    common in traditional social media feeds.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    content = models.TextField()
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='posts'
+    )
+    world = models.ForeignKey(
+        LivingWorld,
+        on_delete=models.CASCADE,
+        related_name='posts'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'post'
+        verbose_name = 'Post'
+        verbose_name_plural = 'Posts'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Post by {self.author.username} in {self.world.name}"
 
 
 class ResearchArtifact(models.Model):
@@ -115,24 +154,24 @@ class ResearchArtifact(models.Model):
     artifact_type = models.CharField(max_length=50, choices=ARTIFACT_TYPES)
     ipfs_cid = models.CharField(max_length=255, unique=True)
     author = models.ForeignKey(
-        User, 
-        on_delete=models.CASCADE, 
+        User,
+        on_delete=models.CASCADE,
         related_name='artifacts'
     )
-    hub = models.ForeignKey(
-        ResearchHub,
-        on_delete=models.CASCADE, 
+    world = models.ForeignKey(
+        LivingWorld,
+        on_delete=models.CASCADE,
         related_name='artifacts'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = 'research_artifact'
         verbose_name = 'Research Artifact'
         verbose_name_plural = 'Research Artifacts'
         ordering = ['-created_at']
-    
+
     def __str__(self):
         return f"{self.title} by {self.author.username}"
 
@@ -192,8 +231,8 @@ class CommunityMembership(models.Model):
         on_delete=models.CASCADE,
         related_name='community_memberships'
     )
-    hub = models.ForeignKey(
-        ResearchHub,
+    world = models.ForeignKey(
+        LivingWorld,
         on_delete=models.CASCADE, 
         related_name='memberships'
     )
@@ -277,8 +316,8 @@ class Proposal(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=200)
     description = models.TextField()
-    hub = models.ForeignKey(
-        ResearchHub,
+    world = models.ForeignKey(
+        LivingWorld,
         on_delete=models.CASCADE, 
         related_name='proposals'
     )
