@@ -59,21 +59,16 @@ class User(AbstractUser):
         return self.username
 
 
-class LivingWorld(models.Model):
+class ResearchHub(models.Model):
     """
-    LivingWorld model - the central entity in Eudaimonia's architecture.
-    
-    A LivingWorld represents a distinct community space where users can
-    interact, share content, and build relationships. Each world has its
-    own theme, rules, and culture, embodying the concept of contextual
-    social spaces.
+    ResearchHub model - a community for decentralized science.
     """
-    WORLD_CATEGORIES = [
-        ('education', 'Education'),
-        ('art', 'Art'),
-        ('science', 'Science'),
-        ('social_participation', 'Social Participation'),
-        ('hobbies', 'Hobbies'),
+    HUB_CATEGORIES = [
+        ('biology', 'Biology'),
+        ('physics', 'Physics'),
+        ('computer_science', 'Computer Science'),
+        ('social_sciences', 'Social Sciences'),
+        ('humanities', 'Humanities'),
         ('other', 'Other'),
     ]
 
@@ -82,59 +77,64 @@ class LivingWorld(models.Model):
     description = models.TextField()
     category = models.CharField(
         max_length=50,
-        choices=WORLD_CATEGORIES,
+        choices=HUB_CATEGORIES,
         default='other'
     )
-    theme_data = models.JSONField(default=dict, blank=True)
     owner = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='owned_worlds'
+        related_name='owned_hubs'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        db_table = 'living_world'
-        verbose_name = 'Living World'
-        verbose_name_plural = 'Living Worlds'
+        db_table = 'research_hub'
+        verbose_name = 'Research Hub'
+        verbose_name_plural = 'Research Hubs'
     
     def __str__(self):
         return self.name
 
 
-class Post(models.Model):
+class ResearchArtifact(models.Model):
     """
-    Post model for content within LivingWorlds.
-    
-    Posts are always contextual to a specific LivingWorld, reinforcing
-    the community-centric architecture. This prevents context collapse
-    by ensuring content is always situated within its appropriate social
-    context.
+    ResearchArtifact model - a piece of scientific work.
     """
+    ARTIFACT_TYPES = [
+        ('preprint', 'Pre-print'),
+        ('dataset', 'Dataset'),
+        ('code', 'Code'),
+        ('review', 'Review'),
+        ('other', 'Other'),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    content = models.TextField()
+    title = models.CharField(max_length=300)
+    abstract = models.TextField()
+    artifact_type = models.CharField(max_length=50, choices=ARTIFACT_TYPES)
+    ipfs_cid = models.CharField(max_length=255, unique=True)
     author = models.ForeignKey(
         User, 
         on_delete=models.CASCADE, 
-        related_name='posts'
+        related_name='artifacts'
     )
-    world = models.ForeignKey(
-        LivingWorld, 
+    hub = models.ForeignKey(
+        ResearchHub,
         on_delete=models.CASCADE, 
-        related_name='posts'
+        related_name='artifacts'
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        db_table = 'post'
-        verbose_name = 'Post'
-        verbose_name_plural = 'Posts'
+        db_table = 'research_artifact'
+        verbose_name = 'Research Artifact'
+        verbose_name_plural = 'Research Artifacts'
         ordering = ['-created_at']
     
     def __str__(self):
-        return f"{self.author.username} in {self.world.name}: {self.content[:50]}..."
+        return f"{self.title} by {self.author.username}"
 
 
 class Friendship(models.Model):
@@ -178,11 +178,7 @@ class Friendship(models.Model):
 
 class CommunityMembership(models.Model):
     """
-    CommunityMembership model - the bridge between Users and LivingWorlds.
-    
-    This model implements the "Faceted Identity" concept by tracking a user's
-    role, reputation, and participation within each LivingWorld they join.
-    A user's identity emerges from the intersection of these various memberships.
+    CommunityMembership model - the bridge between Users and ResearchHubs.
     """
     ROLE_CHOICES = [
         ('member', 'Member'),
@@ -196,8 +192,8 @@ class CommunityMembership(models.Model):
         on_delete=models.CASCADE,
         related_name='community_memberships'
     )
-    world = models.ForeignKey(
-        LivingWorld, 
+    hub = models.ForeignKey(
+        ResearchHub,
         on_delete=models.CASCADE, 
         related_name='memberships'
     )
@@ -213,25 +209,76 @@ class CommunityMembership(models.Model):
         db_table = 'community_membership'
         verbose_name = 'Community Membership'
         verbose_name_plural = 'Community Memberships'
-        unique_together = ['user', 'world']
+        unique_together = ['user', 'hub']
     
     def __str__(self):
-        return f"{self.user.username} in {self.world.name} ({self.role})"
+        return f"{self.user.username} in {self.hub.name} ({self.role})"
+
+
+class PeerReview(models.Model):
+    """
+    PeerReview model for scientific artifacts.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    artifact = models.ForeignKey(
+        ResearchArtifact,
+        on_delete=models.CASCADE,
+        related_name='reviews'
+    )
+    reviewer = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='reviews_given'
+    )
+    rating = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)]
+    )
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'peer_review'
+        verbose_name = 'Peer Review'
+        verbose_name_plural = 'Peer Reviews'
+        unique_together = ['artifact', 'reviewer']
+
+    def __str__(self):
+        return f"Review of {self.artifact.title} by {self.reviewer.username}"
+
+
+class Citation(models.Model):
+    """
+    Citation model to track citations between artifacts.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    citing_artifact = models.ForeignKey(
+        ResearchArtifact,
+        on_delete=models.CASCADE,
+        related_name='citations_made'
+    )
+    cited_artifact = models.ForeignKey(
+        ResearchArtifact,
+        on_delete=models.CASCADE,
+        related_name='citations_received'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'citation'
+        verbose_name = 'Citation'
+        verbose_name_plural = 'Citations'
+        unique_together = ['citing_artifact', 'cited_artifact']
 
 
 class Proposal(models.Model):
     """
     Proposal model for community governance.
-    
-    This implements the basic governance system for LivingWorlds, allowing
-    communities to make collective decisions. This is the foundation for
-    the future DAO functionality outlined in the roadmap.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=200)
     description = models.TextField()
-    world = models.ForeignKey(
-        LivingWorld, 
+    hub = models.ForeignKey(
+        ResearchHub,
         on_delete=models.CASCADE, 
         related_name='proposals'
     )
