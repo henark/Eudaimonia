@@ -30,6 +30,30 @@ interface Post {
   created_at: string
 }
 
+interface Member {
+  id: string
+  profile: {
+    name: string
+    user: {
+      username: string
+    }
+  }
+  role: string
+  reputation: number
+  joined_at: string
+}
+
+interface Proposal {
+  id: string
+  title: string
+  description: string
+  creator: {
+    username: string
+  }
+  vote_count: number
+  created_at: string
+}
+
 export default function LivingWorldPage() {
   const params = useParams()
   const worldId = params.worldId as string
@@ -72,6 +96,42 @@ export default function LivingWorldPage() {
     }
   )
 
+  // Fetch world members
+  const { data: members, isLoading: membersLoading } = useQuery(
+    ['worldMembers', worldId],
+    async () => {
+      const token = localStorage.getItem('authToken')
+      const response = await axios.get(`/api/worlds/${worldId}/members/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      return response.data.results || response.data
+    },
+    {
+      retry: false,
+      onError: (error) => {
+        console.error('Error fetching members:', error)
+      }
+    }
+  )
+
+  // Fetch world proposals
+  const { data: proposals, isLoading: proposalsLoading } = useQuery(
+    ['worldProposals', worldId],
+    async () => {
+      const token = localStorage.getItem('authToken')
+      const response = await axios.get(`/api/worlds/${worldId}/proposals/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      return response.data.results || response.data
+    },
+    {
+      retry: false,
+      onError: (error) => {
+        console.error('Error fetching proposals:', error)
+      }
+    }
+  )
+
   // Create post mutation
   const createPostMutation = useMutation(
     async (content: string) => {
@@ -87,6 +147,25 @@ export default function LivingWorldPage() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['worldPosts', worldId])
+      }
+    }
+  )
+
+  // Vote mutation
+  const voteMutation = useMutation(
+    async ({ proposalId, choice }: { proposalId: string, choice: string }) => {
+      const token = localStorage.getItem('authToken')
+      const response = await axios.post('/api/votes/', {
+        proposal_id: proposalId,
+        choice
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      return response.data
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['worldProposals', worldId])
       }
     }
   )
@@ -265,16 +344,77 @@ export default function LivingWorldPage() {
         )}
 
         {activeTab === 'members' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Members</h3>
-            <p className="text-gray-500">Member list feature coming soon...</p>
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Members</h3>
+              {membersLoading ? (
+                <div className="animate-pulse space-y-3">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              ) : members && members.length > 0 ? (
+                <ul className="divide-y divide-gray-200">
+                  {members.map((member: Member) => (
+                    <li key={member.id} className="py-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{member.profile.user.username}</p>
+                        <p className="text-sm text-gray-500">{member.profile.name} - {member.role}</p>
+                      </div>
+                      <span className="text-sm text-gray-500">{member.reputation} rep</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500">No members yet.</p>
+              )}
+            </div>
           </div>
         )}
 
         {activeTab === 'governance' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Governance</h3>
-            <p className="text-gray-500">Governance features coming soon...</p>
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Proposals</h3>
+              {proposalsLoading ? (
+                <div className="animate-pulse space-y-4">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="h-24 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              ) : proposals && proposals.length > 0 ? (
+                <div className="space-y-4">
+                  {proposals.map((proposal: Proposal) => (
+                    <div key={proposal.id} className="border border-gray-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-gray-900">{proposal.title}</h4>
+                      <p className="text-sm text-gray-600 mt-1">{proposal.description}</p>
+                      <div className="flex items-center justify-between mt-4 text-xs text-gray-500">
+                        <span>by {proposal.creator.username}</span>
+                        <span>{proposal.vote_count} votes</span>
+                      </div>
+                      <div className="mt-4 flex space-x-2">
+                        <button
+                          onClick={() => voteMutation.mutate({ proposalId: proposal.id, choice: 'agree' })}
+                          className="px-3 py-1 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+                          disabled={voteMutation.isLoading}
+                        >
+                          Agree
+                        </button>
+                        <button
+                          onClick={() => voteMutation.mutate({ proposalId: proposal.id, choice: 'disagree' })}
+                          className="px-3 py-1 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+                          disabled={voteMutation.isLoading}
+                        >
+                          Disagree
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500">No proposals yet.</p>
+              )}
+            </div>
           </div>
         )}
       </div>

@@ -25,6 +25,12 @@ interface Post {
   created_at: string
 }
 
+interface SmartProfile {
+  id: string
+  name: string
+  did: string
+}
+
 export default function Dashboard() {
   const [userProfile, setUserProfile] = useState<any>(null)
 
@@ -64,12 +70,30 @@ export default function Dashboard() {
     }
   )
 
+  // Fetch Smart Profiles
+  const { data: smartProfiles, isLoading: profilesLoading } = useQuery(
+    'smartProfiles',
+    async () => {
+      const token = localStorage.getItem('authToken')
+      const response = await axios.get('/api/smart-profiles/', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      return response.data.results || response.data
+    },
+    {
+      retry: false,
+      onError: (error) => {
+        console.error('Error fetching smart profiles:', error)
+      },
+    }
+  )
+
   useEffect(() => {
     // Fetch user profile
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem('authToken')
-        const response = await axios.get('/api/users/me/profile/', {
+        const response = await axios.get('/api/me/profile/', {
           headers: { Authorization: `Bearer ${token}` }
         })
         setUserProfile(response.data)
@@ -92,59 +116,100 @@ export default function Dashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Your Living Worlds */}
-        <div className="bg-white rounded-lg shadow p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Your Smart Profiles */}
+        <div className="lg:col-span-1 bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Your Living Worlds</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Your Smart Profiles</h2>
             <Link
-              href="/dashboard/worlds"
+              href="/dashboard/profiles"
               className="text-primary-600 hover:text-primary-700 text-sm font-medium"
             >
-              View all
+              Manage
             </Link>
           </div>
-          
-          {worldsLoading ? (
+
+          {profilesLoading ? (
             <div className="animate-pulse space-y-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                <div key={i} className="h-12 bg-gray-200 rounded"></div>
               ))}
             </div>
-          ) : worlds && worlds.length > 0 ? (
+          ) : smartProfiles && smartProfiles.length > 0 ? (
             <div className="space-y-3">
-              {worlds.slice(0, 3).map((membership: any) => (
-                <Link
-                  key={membership.id}
-                  href={`/dashboard/worlds/${membership.world.id}`}
-                  className="block p-3 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium text-gray-900">{membership.world.name}</h3>
-                      <p className="text-sm text-gray-500">{membership.role}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm text-gray-500">{membership.reputation} rep</span>
-                    </div>
-                  </div>
-                </Link>
+              {smartProfiles.slice(0, 4).map((profile: SmartProfile) => (
+                <div key={profile.id} className="p-3 border border-gray-200 rounded-lg">
+                  <p className="font-medium text-gray-900">{profile.name}</p>
+                  <p className="text-sm text-gray-500 truncate">{profile.did || 'No DID yet'}</p>
+                </div>
               ))}
             </div>
           ) : (
             <div className="text-center py-8">
-              <p className="text-gray-500 mb-4">You haven't joined any Living Worlds yet.</p>
+              <p className="text-gray-500 mb-4">You have no Smart Profiles.</p>
               <Link
-                href="/dashboard/worlds"
+                href="/dashboard/profiles"
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
               >
-                Discover Worlds
+                Create a Profile
               </Link>
             </div>
           )}
         </div>
 
-        {/* Recent Activity */}
+        <div className="lg:col-span-2 grid grid-cols-1 gap-6">
+          {/* Your Living Worlds */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">Your Living Worlds</h2>
+              <Link
+                href="/dashboard/worlds"
+                className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+              >
+                View all
+              </Link>
+            </div>
+
+            {worldsLoading ? (
+              <div className="animate-pulse space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+            ) : userProfile && userProfile.community_memberships.length > 0 ? (
+              <div className="space-y-3">
+                {userProfile.community_memberships.slice(0, 3).map((membership: any) => (
+                  <Link
+                    key={membership.world_name}
+                    href={`/dashboard/worlds/${membership.world_id}`}
+                    className="block p-3 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-gray-900">{membership.world_name}</h3>
+                        <p className="text-sm text-gray-500">{membership.profile_name} - {membership.role}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm text-gray-500">{membership.reputation} rep</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">You haven't joined any Living Worlds yet.</p>
+                <Link
+                  href="/dashboard/worlds"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
+                >
+                  Discover Worlds
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Recent Activity */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Recent Activity</h2>
