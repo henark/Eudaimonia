@@ -27,6 +27,34 @@ from .serializers import (
 User = get_user_model()
 
 
+class MeView(APIView):
+    """
+    User's own data endpoint.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """
+        Get the authenticated user's data.
+        """
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+
+class MyProfileView(APIView):
+    """
+    User's own profile data endpoint.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """
+        Get the authenticated user's faceted profile.
+        """
+        serializer = FacetedProfileSerializer(request.user)
+        return Response(serializer.data)
+
+
 class UserRegistrationView(APIView):
     """
     User registration endpoint.
@@ -113,12 +141,20 @@ class LivingWorldViewSet(viewsets.ModelViewSet):
         """
         Join a LivingWorld.
         
-        This endpoint allows users to join a LivingWorld, creating
-        a CommunityMembership with default role and reputation.
+        This endpoint allows users to join a LivingWorld with a specific
+        SmartProfile, creating a CommunityMembership with default role
+        and reputation.
         """
         world = self.get_object()
+        profile_id = request.data.get('profile_id')
+        if not profile_id:
+            return Response(
+                {'error': 'profile_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         serializer = CommunityMembershipSerializer(
-            data={'world_id': world.id},
+            data={'world_id': world.id, 'profile_id': profile_id},
             context={'request': request}
         )
         
@@ -151,6 +187,18 @@ class LivingWorldViewSet(viewsets.ModelViewSet):
         world = self.get_object()
         memberships = world.memberships.all()
         serializer = CommunityMembershipSerializer(memberships, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def proposals(self, request, pk=None):
+        """
+        Get all proposals in a LivingWorld.
+
+        This endpoint returns all proposals within a specific LivingWorld.
+        """
+        world = self.get_object()
+        proposals = world.proposals.all()
+        serializer = ProposalSerializer(proposals, many=True)
         return Response(serializer.data)
 
 
@@ -256,7 +304,7 @@ class CommunityMembershipViewSet(viewsets.ReadOnlyModelViewSet):
         """
         Filter memberships to show only those of the current user.
         """
-        return CommunityMembership.objects.filter(user=self.request.user)
+        return CommunityMembership.objects.filter(profile__user=self.request.user)
 
 
 class ProposalViewSet(viewsets.ModelViewSet):

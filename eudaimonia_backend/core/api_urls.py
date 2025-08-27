@@ -11,6 +11,7 @@ from .views import (
     UserViewSet, LivingWorldViewSet, PostViewSet, FriendshipViewSet,
     CommunityMembershipViewSet, ProposalViewSet, VoteViewSet, AICompanionView
 )
+from .viewsets import SmartProfileViewSet, VerifiableCredentialViewSet
 
 # Create router and register ViewSets
 router = DefaultRouter()
@@ -21,6 +22,8 @@ router.register(r'friendships', FriendshipViewSet)
 router.register(r'memberships', CommunityMembershipViewSet)
 router.register(r'proposals', ProposalViewSet)
 router.register(r'votes', VoteViewSet)
+router.register(r'smart-profiles', SmartProfileViewSet)
+router.register(r'verifiable-credentials', VerifiableCredentialViewSet)
 
 urlpatterns = [
     # Include router URLs

@@ -185,9 +185,7 @@ class CommunityMembership(models.Model):
     profile = models.ForeignKey(
         SmartProfile,
         on_delete=models.CASCADE,
-        related_name='community_memberships',
-        null=True,
-        blank=True
+        related_name='community_memberships'
     )
     world = models.ForeignKey(
         LivingWorld, 
